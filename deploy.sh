@@ -120,6 +120,14 @@ get_input(){
         fi
     done
 
+    # Read SSH key file
+     while true; do
+        read -p "SSH key path: " ssh_key
+        if check_file "$ssh_key" "SSH key"; then
+            break
+        fi
+    done
+
     # Read app port (internal container port)
     while true; do 
         read -p "App port: " app_port
@@ -189,4 +197,9 @@ check_docker_files(){
        fail "No Docker config found"
        return 1
     fi
+}
+
+# Step 4: Establish connection to Linux via SSH and run a command
+run_remote(){
+    ssh -i "$ssh_key" -o StrictHostKeyChecking=no "${ssh_user}@${server_ip}" "$cmd"
 }
