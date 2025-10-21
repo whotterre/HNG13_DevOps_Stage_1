@@ -203,3 +203,19 @@ check_docker_files(){
 run_remote(){
     ssh -i "$ssh_key" -o StrictHostKeyChecking=no "${ssh_user}@${server_ip}" "$cmd"
 }
+
+# Step 5: Setup server by installing necessary dependencies
+setup_server(){
+    info "Setting up server..."
+    # Install Docker, Docker Compose and NGINX
+    run_remote '
+        set -e
+        sudo apt-get update
+        sudo apt-get install -y docker.io docker-compose nginx"
+        sudo systemctl enable docker
+        sudo systemctl start docker
+        sudo usermod -aG docker $USER || true
+    '
+    success "Server setup done"
+}
+
