@@ -1,5 +1,4 @@
-#!/bin/bash
-
+#!/usr/bin/bash
 set -e
 
 # Colors for pretty output
@@ -65,12 +64,12 @@ check_file() {  # Checks if a file exists
 check_port(){  # Validate the input passed for the port number
     local file="$1"
     # Ensure that what is passed is a number
-    if ! [[ "$port" =~ ^[0-9]+$]]; then
+    if ! [[ "$port" =~ ^[0-9]+$ ]]; then
        fail "Port should be a number"
        return 1
     fi 
     # Ensure that the port number is in the range of 1 - 65535
-    if [[ "$port" -lt 1 || "$port" -gt 65535]]; then
+    if [[ "$port" -lt 1 || "$port" -gt 65535 ]]; then
        fail "Port should be between 1 and 65535"
        return 1
     fi
@@ -88,7 +87,7 @@ get_input(){
     done
      # Read GitHub Personal Access Token
     while true; do 
-       read -sp "GitHub Personal Access Token: "
+       read -sp "GitHub Personal Access Token: " github_pat
        echo 
        if [[ -n "$github_pat" ]]; then 
           break
@@ -103,7 +102,7 @@ get_input(){
     # Read SSH username
     while true; do 
         read -p "SSH user: " ssh_user
-        if [[ -n $ssh_user]]; then 
+        if [[ -n $ssh_user ]]; then 
             break
         else 
             fail "SSH user required"
@@ -113,7 +112,7 @@ get_input(){
     # Read SSH Server IP
     while true; do
         read -p "Server IP: " server_ip
-        if [[ -n "$server_ip"]]; then
+        if [[ -n "$server_ip" ]]; then
            break
         else 
            fail "Server IP required"
@@ -164,7 +163,7 @@ setup_repo(){
     # Add PAT to URL for auth
     local auth_url = "https://${pat}@${url#https://}"
     # If repo clone exists locally, navigate and pull updates to the specified branch
-    if [[ -d "$repo_name"]]; then
+    if [[ -d "$repo_name" ]]; then
         info "Repository already exists, pulling latest updates...."
         cd "$repo_name"
         git checkout "$branch" 2>/dev/null || true
@@ -187,10 +186,10 @@ setup_repo(){
 
 # Step 3: Check for the existence of any Docker config files
 check_docker_files(){
-    if [[-f "Dockerfile "]]; then 
+    if [[ -f "Dockerfile" ]]; then 
        success "Found Dockerfile"
        return 0
-    elif [[-f "docker-compose.yml"]]; then 
+    elif [[ -f "docker-compose.yml" ]]; then 
        success "Found docker-compose.yml"
        return 0
     else 
@@ -233,7 +232,7 @@ deploy_app(){
     copy_to_server "." "/home/$ssh_user/$repo_name"
 
     # Build and run 
-    if [[ -f "Dockerfile"]]; then 
+    if [[ -f "Dockerfile" ]]; then 
        run_remote "
           set -e
           cd /home/$ssh_user/$repo_name
@@ -241,7 +240,7 @@ deploy_app(){
           sudo docker rm app || true
           sudo docker run -d --name app -p $app_port:$app_port app
        "
-    elif [[ -f "docker-compose.yml"]]; then 
+    elif [[ -f "docker-compose.yml" ]]; then 
         run_remote "
           set -e 
           cd /home/$ssh_user/$repo_name
@@ -311,3 +310,47 @@ check_deployment() {
 
     return 0
 }
+
+# Chapter 9: Driver code for the rest
+main() {
+    info "Starting deployment..."
+    
+    get_input
+    repo_name=$(parse_repo "$repo_url")
+    
+    info "Working with repo: $repo_name"
+    
+    if ! setup_repo "$repo_url" "$github_pat" "$branch" "$repo_name"; then
+        fail "Repo setup failed"
+        exit 1
+    fi
+    
+    if ! check_docker_files; then
+        exit 1
+    fi
+    
+    if ! setup_server; then
+        fail "Server setup failed"
+        exit 1
+    fi
+    
+    if ! deploy_app; then
+        fail "Deployment failed"
+        exit 1
+    fi
+    
+    if ! setup_nginx; then
+        fail "Nginx setup failed"
+        exit 1
+    fi
+    
+    if ! check_deployment; then
+        fail "Deployment check failed"
+        exit 1
+    fi
+    
+    success "All done! App deployed at http://$server_ip"
+}
+
+
+main "$@"
