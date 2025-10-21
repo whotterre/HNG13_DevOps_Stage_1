@@ -219,3 +219,36 @@ setup_server(){
     success "Server setup done"
 }
 
+# Step 6: Deploy Dockerized application
+copy_to_server(){
+    local local_path="$1"
+    local remote_path="$2"
+    scp -i "$ssh_key" -o StrictHostKeyChecking=no -r "$local_path" "${ssh_user}@${server_ip}:$remote_path"
+}
+# Copy project files
+deploy_app(){
+    info "Deploying application..."
+
+    # Copy project to server
+    copy_to_server "." "/home/$ssh_user/$repo_name"
+
+    # Build and run 
+    if [[ -f "Dockerfile"]]; then 
+       run_remote "
+          set -e
+          cd /home/$ssh_user/$repo_name
+          sudo docker build -t app .
+          sudo docker rm app || true
+          sudo docker run -d --name app -p $app_port:$app_port app
+       "
+    elif [[ -f "docker-compose.yml"]]; then 
+        run_remote "
+          set -e 
+          cd /home/$ssh_user/$repo_name
+          sudo docker-compose down || true
+          sudo docker-compose up -d
+          "
+    fi
+    success "App deployed"
+}
+
