@@ -129,3 +129,51 @@ get_input(){
     done
 }
 
+# Step 2: Clone and setup GitHub repository
+# Extract repository details by parsing
+parse_repo(){
+    local url = "$1"
+
+    # Strip protocol info
+    temp="${url#http://}"
+    temp="${url#https://}"
+
+    # Remove domain
+    temp="${temp#*/}"
+    # Get repository name
+    repo_name="${temp##*/}"
+    repo_name="${repo_name%.git}"
+    echo "$repo_name"
+}
+
+# Clone or update repository
+setup_repo(){
+    local url = "$1"
+    local pat = "$2"
+    local branch = "$3"
+    local repo_name = "$4"
+
+    # Add PAT to URL for auth
+    local auth_url = "https://${pat}@${url#https://}"
+    # If repo clone exists locally, navigate and pull updates to the specified branch
+    if [[ -d "$repo_name"]]; then
+        info "Repository already exists, pulling latest updates...."
+        cd "$repo_name"
+        git checkout "$branch" 2>/dev/null || true
+        if ! git pull origin "$branch"; then
+            fail "Git pull failed"
+            return 1
+        fi
+    else 
+    # Otherwise, clone repo
+        info "Cloning repo...."
+        if ! git clone -b "$branch" "$auth_url"; then
+           fail "Clone failed"
+           return 1
+        fi
+        cd "$repo_name"
+    fi
+    return 0
+}
+
+
