@@ -252,3 +252,62 @@ deploy_app(){
     success "App deployed"
 }
 
+# Step 7: Configure Nginx as reverse proxy
+# Setup nginx
+setup_nginx() {
+    info "Configuring nginx..."
+
+    local nginx_config="
+server {
+    listen 80;
+    server_name $server_ip;
+
+    location / {
+        proxy_pass http://127.0.0.1:$app_port;
+        proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
+    }
+}
+"
+
+    run_remote "
+        set -e
+        echo '$nginx_config' | sudo tee /etc/nginx/sites-available/app > /dev/null
+        sudo ln -sf /etc/nginx/sites-available/app /etc/nginx/sites-enabled/
+        sudo nginx -t
+        sudo systemctl reload nginx
+    "
+
+    success "Nginx configured"
+}
+
+# Step 8: Check deployment
+check_deployment() {
+    info "Checking deployment..."
+
+    # Wait a bit for app to start
+    sleep 10
+
+    if run_remote "sudo docker ps | grep app"; then
+        success "Container is running"
+    else
+        fail "Container not running"
+        return 1
+    fi
+
+    if run_remote "curl -s http://127.0.0.1:$app_port > /dev/null"; then
+        success "App responding on port $app_port"
+    else
+        fail "App not responding"
+        return 1
+    fi
+
+    if run_remote "curl -s http://$server_ip > /dev/null"; then
+        success "Nginx proxy working"
+    else
+        fail "Nginx proxy failed"
+        return 1
+    fi
+
+    return 0
+}
