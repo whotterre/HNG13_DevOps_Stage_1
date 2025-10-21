@@ -177,3 +177,16 @@ setup_repo(){
 }
 
 
+# Step 3: Check for the existence of any Docker config files
+check_docker_files(){
+    if [[-f "Dockerfile "]]; then 
+       success "Found Dockerfile"
+       return 0
+    elif [[-f "docker-compose.yml"]]; then 
+       success "Found docker-compose.yml"
+       return 0
+    else 
+       fail "No Docker config found"
+       return 1
+    fi
+}
