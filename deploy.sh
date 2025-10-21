@@ -37,4 +37,95 @@ cleanup() {
 
 trap cleanup EXIT
 
+# Step 1: Collect data
+# Validation functions for input items
+check_url() {  # Validation for GitHub URL input
+    local url="$1"
+    if [[ -z "$url" ]]; then
+        fail "Git URL can't be empty"
+        return 1
+    fi
+    if [[ ! "$url" =~ ^https?:// ]]; then
+        fail "URL should start with http:// or https://"
+        return 1
+    fi
+    return 0
+}
+
+check_file() {  # Checks if a file exists
+    local file="$1"
+    local desc="$2"
+    if [[ ! -f "$file" ]]; then
+        fail "$desc '$file' not found"
+        return 1
+    fi
+    return 0
+}
+
+check_port(){  # Validate the input passed for the port number
+    local file="$1"
+    # Ensure that what is passed is a number
+    if ! [[ "$port" =~ ^[0-9]+$]]; then
+       fail "Port should be a number"
+       return 1
+    fi 
+    # Ensure that the port number is in the range of 1 - 65535
+    if [[ "$port" -lt 1 || "$port" -gt 65535]]; then
+       fail "Port should be between 1 and 65535"
+       return 1
+    fi
+    return 0
+}
+
+# Part that actually gets input
+get_input(){
+    # Read GitHub repository URL
+    while true; do 
+       read -p "GitHub repository URL: " repo_url
+       if check_url "$repo_url"; then
+          break
+       fi
+    done
+     # Read GitHub Personal Access Token
+    while true; do 
+       read -sp "GitHub Personal Access Token: "
+       echo 
+       if [[ -n "$github_pat" ]]; then 
+          break
+       else 
+          fail "PAT field can't be empty"
+       fi
+    done
+    # Read branch name
+    read -p "Branch [main]: " branch
+    branch=${branch: -main}
+    # Collect SSH details
+    # Read SSH username
+    while true; do 
+        read -p "SSH user: " ssh_user
+        if [[ -n $ssh_user]]; then 
+            break
+        else 
+            fail "SSH user required"
+        fi
+    done
+
+    # Read SSH Server IP
+    while true; do
+        read -p "Server IP: " server_ip
+        if [[ -n "$server_ip"]]; then
+           break
+        else 
+           fail "Server IP required"
+        fi
+    done
+
+    # Read app port (internal container port)
+    while true; do 
+        read -p "App port: " app_port
+        if check_port "$app_port"; then
+           break
+        fi
+    done
+}
 
